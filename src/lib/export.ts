@@ -1,4 +1,5 @@
 import { invoiceLineAmount, recordedInvoiceTotals } from "./invoices";
+import { companyLogoUrl } from "./company-logo";
 import { format } from "date-fns";
 import type { Company, Entry, InvoiceLine, Kind, Workspace } from "./types";
 import { money } from "./utils";
@@ -224,6 +225,19 @@ export async function exportWorkspace(
     const { default: JSZip } = await import("jszip"),
       zip = new JSZip();
     zip.file("company.json", JSON.stringify(workspace.company, null, 2));
+    const logoUrl = companyLogoUrl(workspace.company!);
+    if (logoUrl) {
+      const response = await fetch(logoUrl);
+      if (!response.ok)
+        throw new Error("Unable to export the company logo. Please try again.");
+      const extension =
+        response.headers.get("content-type") === "image/jpeg"
+          ? "jpg"
+          : response.headers.get("content-type") === "image/webp"
+            ? "webp"
+            : "png";
+      zip.file(`company-logo.${extension}`, await response.arrayBuffer());
+    }
     zip.file("team.json", JSON.stringify(workspace.members, null, 2));
     zip.file("records.json", JSON.stringify(records, null, 2));
     zip.file("records.csv", toCsv(records));

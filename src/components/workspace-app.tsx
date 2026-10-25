@@ -11,7 +11,6 @@ import {
   Building2,
   CalendarDays,
   Check,
-  ChevronDown,
   ChevronsUpDown,
   CircleHelp,
   Command,
@@ -49,6 +48,10 @@ import {
   DropdownSeparator,
 } from "./ui/dropdown-menu";
 import { CompanyDialog } from "./company-dialog";
+import { CompanyAvatar } from "./company-logo";
+import { QuickAddMenu, Shortcut } from "./quick-add-menu";
+import { QUICK_ACTIONS } from "@/lib/quick-actions";
+import { useWorkspaceHotkeys } from "@/hooks/use-workspace-hotkeys";
 import { RecordEditor } from "./record-editor";
 import { InvoiceDetail } from "./invoice-detail";
 import { ExportDialog } from "./export-dialog";
@@ -154,7 +157,8 @@ export function WorkspaceApp({ page = "overview" }: { page?: Page }) {
     to: string;
   } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null),
-    invitationHandled = useRef(false);
+    invitationHandled = useRef(false),
+    uploadDate = useRef<string | undefined>(undefined);
   useEffect(() => {
     setCompanyId(localStorage.getItem("evora:company") || undefined);
     setInitialized(true);
@@ -251,7 +255,23 @@ export function WorkspaceApp({ page = "overview" }: { page?: Page }) {
   const createEntry = (kind: Kind, defaults?: Partial<EntryInput>) => {
     if (canEdit) setEditor({ kind, defaults });
   };
-  const uploadFiles = async (files: File[], folder = "Company") => {
+  const quickAdd = (kind: Kind, date?: string) => {
+    if (!canEdit || !workspace?.company) return;
+    if (kind === "document") {
+      uploadDate.current = date;
+      fileInput.current?.click();
+    } else createEntry(kind, date ? { date } : undefined);
+  };
+  useWorkspaceHotkeys({
+    enabled: canEdit && Boolean(workspace?.company),
+    scope: workspace?.company?.id,
+    onAction: quickAdd,
+  });
+  const uploadFiles = async (
+    files: File[],
+    folder = "Company",
+    date?: string,
+  ) => {
     if (!files.length) return;
     const toastId = toast.loading(
       `Uploading ${files.length === 1 ? files[0].name : `${files.length} files`}…`,
@@ -264,6 +284,7 @@ export function WorkspaceApp({ page = "overview" }: { page?: Page }) {
         const form = new FormData();
         form.append("file", file);
         form.append("folder", folder);
+        if (date) form.append("date", date);
         await api(
           "upload",
           { method: "POST", body: form },
@@ -348,10 +369,14 @@ export function WorkspaceApp({ page = "overview" }: { page?: Page }) {
         openEntry,
         editEntry: (e) => setEditor({ kind: e.kind, entry: e }),
         createEntry,
+        quickAdd,
         exportData: (kind = "all", from = "", to = "") =>
           setExportOptions({ kind, from, to }),
         uploadFiles,
-        chooseFiles: () => fileInput.current?.click(),
+        chooseFiles: () => {
+          uploadDate.current = undefined;
+          fileInput.current?.click();
+        },
         reload,
         canEdit,
       }}
@@ -390,10 +415,10 @@ export function WorkspaceApp({ page = "overview" }: { page?: Page }) {
             className="company-dropdown"
             trigger={
               <button className="company-switcher" aria-label="Switch company">
-                <span className="company-monogram">
-                  {workspace.company?.name[0]?.toLowerCase() || "e"}
-                  <span />
-                </span>
+                <CompanyAvatar
+                  company={workspace.company}
+                  className="company-monogram"
+                />
                 <span>
                   <strong>{workspace.company?.name || "Your company"}</strong>
                   <small>
@@ -409,7 +434,7 @@ export function WorkspaceApp({ page = "overview" }: { page?: Page }) {
             <DropdownLabel>Your companies</DropdownLabel>
             {workspace.companies.map((c) => (
               <DropdownItem key={c.id} onSelect={() => switchCompany(c.id)}>
-                <span className="company-mini-monogram">{c.name[0]}</span>
+                <CompanyAvatar company={c} className="company-mini-monogram" />
                 {c.name}
                 {c.id === workspace.company?.id && (
                   <Check size={15} className="ml-auto" />
@@ -534,11 +559,6 @@ export function WorkspaceApp({ page = "overview" }: { page?: Page }) {
                 </DropdownItem>
               </Dropdown>
             </div>
-            <button className="open-source-badge" onClick={() => setHelp(true)}>
-              <GitBranch size={12} />
-              Open source. Yours to keep.
-              <span />
-            </button>
           </div>
         </aside>
         <div className="main-shell">
@@ -553,9 +573,9 @@ export function WorkspaceApp({ page = "overview" }: { page?: Page }) {
               >
                 <Menu size={19} />
               </Button>
-              <span className="breadcrumb-company">
+              <Link to="/" className="breadcrumb-company">
                 {workspace.company?.name || "Evora"}
-              </span>
+              </Link>
               <span className="breadcrumb-slash">/</span>
               <span>{topLabel}</span>
             </div>
@@ -630,51 +650,7 @@ export function WorkspaceApp({ page = "overview" }: { page?: Page }) {
                 </DropdownItem>
               </Dropdown>
               <Separator orientation="vertical" className="topbar-divider" />
-              <Dropdown
-                trigger={
-                  <Button size="sm" disabled={!canEdit}>
-                    <Plus size={16} />
-                    Quick add
-                    <ChevronDown size={13} />
-                  </Button>
-                }
-              >
-                <DropdownLabel>Add to your workspace</DropdownLabel>
-                {(
-                  [
-                    {
-                      kind: "invoice",
-                      label: "Create invoice",
-                      icon: FileText,
-                    },
-                    {
-                      kind: "transaction",
-                      label: "Add transaction",
-                      icon: ArrowDownUp,
-                    },
-                    {
-                      kind: "event",
-                      label: "Add reminder",
-                      icon: CalendarDays,
-                    },
-                    { kind: "note", label: "Write a note", icon: StickyNote },
-                    { kind: "contact", label: "Add contact", icon: Users },
-                  ] as const
-                ).map((action) => (
-                  <DropdownItem
-                    key={action.kind}
-                    onSelect={() => createEntry(action.kind)}
-                  >
-                    <action.icon size={16} />
-                    {action.label}
-                  </DropdownItem>
-                ))}
-                <DropdownSeparator />
-                <DropdownItem onSelect={() => fileInput.current?.click()}>
-                  <FolderClosed size={16} />
-                  Upload document
-                </DropdownItem>
-              </Dropdown>
+              <QuickAddMenu />
             </div>
           </header>
           <main id="main-content" className="main-content">
@@ -698,7 +674,12 @@ export function WorkspaceApp({ page = "overview" }: { page?: Page }) {
         aria-label="Upload company documents"
         tabIndex={-1}
         onChange={(e) => {
-          uploadFiles(Array.from(e.target.files || []));
+          uploadFiles(
+            Array.from(e.target.files || []),
+            "Company",
+            uploadDate.current,
+          );
+          uploadDate.current = undefined;
           e.target.value = "";
         }}
       />
@@ -917,6 +898,22 @@ export function WorkspaceApp({ page = "overview" }: { page?: Page }) {
               </p>
             </span>
           </div>
+          <section className="help-shortcuts">
+            <h3>Quick add shortcuts</h3>
+            <p>
+              Press N, then the next key. Shortcuts pause while you’re typing.
+            </p>
+            <dl>
+              {QUICK_ACTIONS.map((action) => (
+                <div key={action.kind}>
+                  <dt>{action.label}</dt>
+                  <dd>
+                    <Shortcut second={action.key} />
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
           {workspace.user.isAnonymous && (
             <p className="demo-help">
               You’re exploring an isolated demo workspace with sample data.

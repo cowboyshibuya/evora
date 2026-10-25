@@ -3,6 +3,7 @@ export type Kind =
 export type Role = "owner" | "admin" | "member" | "viewer";
 export interface Company {
   id: string;
+  logoKey: string;
   name: string;
   industry: string;
   currency: string;

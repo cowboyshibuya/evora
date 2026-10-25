@@ -16,14 +16,20 @@ import { Badge } from "./ui/badge";
 import { Checkbox } from "./ui/checkbox";
 import { Dropdown, DropdownItem, DropdownSeparator } from "./ui/dropdown-menu";
 
-export function Logo() {
+export function Logo({
+  variant = "default",
+}: { variant?: "default" | "monochrome" } = {}) {
   return (
-    <span className="brand">
-      <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
-        <path d="m4 23 8-15h7L11 23H4Z" fill="currentColor" />
-        <path d="m14 23 8-15h6l-8 15h-6Z" fill="currentColor" opacity=".5" />
-        <path d="M10 26h18v-5H13l-3 5Z" fill="currentColor" />
-      </svg>
+    <span
+      className={cn("brand", variant === "monochrome" && "brand-monochrome")}
+    >
+      {variant === "default" && (
+        <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <path d="m4 23 8-15h7L11 23H4Z" fill="currentColor" />
+          <path d="m14 23 8-15h6l-8 15h-6Z" fill="currentColor" opacity=".5" />
+          <path d="M10 26h18v-5H13l-3 5Z" fill="currentColor" />
+        </svg>
+      )}
       <span>
         evora<span className="brand-dot">.</span>
       </span>
@@ -91,22 +97,16 @@ export function Loading() {
   );
 }
 export function PageHeader({
-  eyebrow,
   title,
-  description,
   actions,
 }: {
-  eyebrow?: string;
   title: string;
-  description: string;
   actions?: ReactNode;
 }) {
   return (
     <div className="page-heading">
       <div>
-        {eyebrow && <span className="eyebrow">{eyebrow}</span>}
         <h1>{title}</h1>
-        <p>{description}</p>
       </div>
       <div className="page-actions">{actions}</div>
     </div>
@@ -114,18 +114,15 @@ export function PageHeader({
 }
 export function PanelHeading({
   title,
-  description,
   action,
 }: {
   title: string;
-  description?: string;
   action?: ReactNode;
 }) {
   return (
     <div className="panel-heading">
       <div>
         <h2>{title}</h2>
-        {description && <p>{description}</p>}
       </div>
       {action}
     </div>

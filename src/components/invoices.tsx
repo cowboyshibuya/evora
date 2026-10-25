@@ -51,7 +51,6 @@ export function Invoices() {
     <>
       <PageHeader
         title="Good work deserves to be paid."
-        description="Create invoices, track what’s due, and keep things moving."
         actions={
           <>
             <Button variant="outline" onClick={() => exportData("invoice")}>

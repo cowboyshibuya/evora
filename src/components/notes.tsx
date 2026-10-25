@@ -43,7 +43,6 @@ export function Notes() {
     <>
       <PageHeader
         title="For the things worth keeping."
-        description="A thought, a meeting, a plan. Give it a little space."
         actions={
           <>
             <Button variant="outline" onClick={() => exportData("note")}>

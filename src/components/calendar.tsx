@@ -1,4 +1,5 @@
 import { PanelHeading } from "./common";
+import { QuickAddMenu } from "./quick-add-menu";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -56,7 +57,6 @@ export function Calendar() {
     <>
       <PageHeader
         title="Room to plan ahead."
-        description="Tax deadlines, invoice due dates, and the dates that matter to your company."
         actions={
           <>
             <Button
@@ -141,16 +141,38 @@ export function Calendar() {
                   )}
                   key={date}
                 >
-                  <button
-                    aria-label={`Show ${format(day, "EEEE dd MMMM yyyy")}, ${items.length} events`}
+                  {canEdit ? (
+                    <QuickAddMenu
+                      date={date}
+                      onOpenChange={(open) => {
+                        if (open) setSelected(date);
+                      }}
+                      trigger={
+                        <button
+                          type="button"
+                          className="calendar-day-add"
+                          aria-label={`Add to ${format(day, "EEEE dd MMMM yyyy")}`}
+                        >
+                          <span className="calendar-day-plus">
+                            <Plus size={14} />
+                          </span>
+                        </button>
+                      }
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      className="calendar-day-add"
+                      aria-label={`Show ${format(day, "EEEE dd MMMM yyyy")}, ${items.length} events`}
+                      onClick={() => setSelected(selected === date ? "" : date)}
+                    />
+                  )}
+                  <span
+                    aria-hidden="true"
                     className={cn("day-number", date === today() && "is-today")}
-                    onClick={() => {
-                      setSelected(selected === date ? "" : date);
-                      if (!isSameMonth(day, month)) setMonth(startOfMonth(day));
-                    }}
                   >
                     {format(day, "d")}
-                  </button>
+                  </span>
                   <div className="day-events">
                     {items.slice(0, 2).map((item) => (
                       <button
@@ -204,7 +226,6 @@ export function Calendar() {
             title={
               selected ? shortDate(selected, "dd MMMM") : "This month’s agenda"
             }
-            description={`${visible.length} things on your calendar`}
             action={
               selected && (
                 <Button

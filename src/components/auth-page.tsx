@@ -211,8 +211,7 @@ export function AuthPage() {
             </div>
           </div>
           <div className="auth-aside-footer">
-            <span className="live-dot" />
-            Built for independent businesses.
+            <Logo variant="monochrome" />
           </div>
         </div>
       </aside>

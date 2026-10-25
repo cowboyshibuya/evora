@@ -9,6 +9,7 @@ export interface WorkspaceContextValue {
   openEntry: (entry: Entry) => void;
   editEntry: (entry: Entry) => void;
   createEntry: (kind: Kind, defaults?: Partial<EntryInput>) => void;
+  quickAdd: (kind: Kind, date?: string) => void;
   exportData: (kind?: string, from?: string, to?: string) => void;
   uploadFiles: (files: File[], folder?: string) => Promise<void>;
   chooseFiles: () => void;

@@ -9,6 +9,7 @@ import { companies, entries, memberships, user, invitations } from "./schema";
 import { seedDemo } from "./seed";
 import { companyInput, entryInput } from "../lib/validation";
 import { calculateInvoiceTotals } from "../lib/invoices";
+import { COMPANY_LOGO_MAX_BYTES, companyLogoError } from "../lib/company-logo";
 import { canEditRecords, canManageCompany } from "../lib/permissions";
 
 class HttpError extends Error {
@@ -49,6 +50,62 @@ function limitedBody(request: Request, limit: number) {
       }),
     ) ?? null
   );
+}
+
+async function readCompanyRequest(request: Request) {
+  if (!request.headers.get("content-type")?.includes("multipart/form-data"))
+    return {
+      input: companyInput.parse(await safeBody(request)),
+      logo: undefined,
+      removeLogo: false,
+    };
+  const limit = COMPANY_LOGO_MAX_BYTES + 64 * 1024;
+  if (Number(request.headers.get("content-length")) > limit)
+    fail(413, "Choose a company logo smaller than 2 MB.");
+  const form = await new Response(limitedBody(request, limit), {
+    headers: { "Content-Type": request.headers.get("content-type") || "" },
+  }).formData();
+  const file = form.get("logo");
+  if (file !== null && !(file instanceof File))
+    fail(400, "Choose an image to upload.");
+  const logo = file instanceof File ? file : undefined;
+  const removeLogo = form.get("removeLogo") === "true";
+  if (logo && removeLogo)
+    fail(400, "Choose a logo or remove the existing one.");
+  if (logo) {
+    const error = companyLogoError(logo);
+    if (error) fail(logo.size > COMPANY_LOGO_MAX_BYTES ? 413 : 400, error);
+  }
+  return {
+    input: companyInput.parse(JSON.parse(String(form.get("company") || "{}"))),
+    logo,
+    removeLogo,
+  };
+}
+
+async function storeCompanyLogo(companyId: string, file: File) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const png =
+    bytes.length >= 8 &&
+    [137, 80, 78, 71, 13, 10, 26, 10].every((v, i) => bytes[i] === v);
+  const jpeg =
+    bytes.length >= 3 &&
+    bytes[0] === 255 &&
+    bytes[1] === 216 &&
+    bytes[2] === 255;
+  const webp =
+    bytes.length >= 12 &&
+    String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" &&
+    String.fromCharCode(...bytes.slice(8, 12)) === "WEBP";
+  if (!(
+    (file.type === "image/png" && png) ||
+    (file.type === "image/jpeg" && jpeg) ||
+    (file.type === "image/webp" && webp)
+  ))
+    fail(400, "This file is not a valid PNG, JPEG, or WebP image.");
+  const key = `${companyId}/logos/${crypto.randomUUID()}`;
+  await env.FILES.put(key, bytes, { httpMetadata: { contentType: file.type } });
+  return key;
 }
 
 export async function handleApi(request: Request): Promise<Response> {
@@ -98,19 +155,28 @@ export async function handleApi(request: Request): Promise<Response> {
       return json({ ok: true });
     }
     if (path === "companies" && method === "POST") {
-      const input = companyInput.parse(await safeBody(request)),
-        id = crypto.randomUUID();
-      await db.batch([
-        db
-          .insert(companies)
-          .values({ ...input, id, createdAt: new Date().toISOString() }),
-        db.insert(memberships).values({
-          id: crypto.randomUUID(),
-          companyId: id,
-          userId,
-          role: "owner",
-        }),
-      ]);
+      const { input, logo } = await readCompanyRequest(request);
+      const id = crypto.randomUUID();
+      const logoKey = logo ? await storeCompanyLogo(id, logo) : "";
+      try {
+        await db.batch([
+          db.insert(companies).values({
+            ...input,
+            id,
+            logoKey,
+            createdAt: new Date().toISOString(),
+          }),
+          db.insert(memberships).values({
+            id: crypto.randomUUID(),
+            companyId: id,
+            userId,
+            role: "owner",
+          }),
+        ]);
+      } catch (error) {
+        if (logoKey) await env.FILES.delete(logoKey);
+        throw error;
+      }
       return json({ id }, 201);
     }
     if (path === "invitations/accept" && method === "POST") {
@@ -201,9 +267,22 @@ export async function handleApi(request: Request): Promise<Response> {
     }
     if (!companyId || !membership)
       fail(400, "Create a company to get started.");
+    if (path === "company/logo" && method === "GET") {
+      if (!membership.company.logoKey) fail(404, "This company has no logo.");
+      const logo = await env.FILES.get(membership.company.logoKey);
+      if (!logo) fail(404, "The company logo could not be found.");
+      return new Response(logo.body, {
+        headers: {
+          "Content-Type":
+            logo.httpMetadata?.contentType || "application/octet-stream",
+          "Cache-Control": "private, no-store",
+          "X-Content-Type-Options": "nosniff",
+        },
+      });
+    }
     if (path === "company" && method === "PUT") {
       requireAdmin();
-      const input = companyInput.parse(await safeBody(request));
+      const { input, logo, removeLogo } = await readCompanyRequest(request);
       if (
         input.currency !== membership.company.currency &&
         (
@@ -219,7 +298,31 @@ export async function handleApi(request: Request): Promise<Response> {
           400,
           "Currency cannot be changed after invoices or financial transactions have been recorded. Create a separate company for another currency.",
         );
-      await db.update(companies).set(input).where(eq(companies.id, companyId));
+      const oldLogoKey = membership.company.logoKey;
+      const logoKey = logo
+        ? await storeCompanyLogo(companyId, logo)
+        : removeLogo
+          ? ""
+          : oldLogoKey;
+      try {
+        const updated = await db
+          .update(companies)
+          .set({ ...input, logoKey })
+          .where(
+            and(eq(companies.id, companyId), eq(companies.logoKey, oldLogoKey)),
+          )
+          .returning({ id: companies.id });
+        if (!updated.length)
+          fail(
+            409,
+            "Company details changed elsewhere. Refresh and try again.",
+          );
+      } catch (error) {
+        if (logoKey && logoKey !== oldLogoKey) await env.FILES.delete(logoKey);
+        throw error;
+      }
+      if (oldLogoKey && oldLogoKey !== logoKey)
+        await env.FILES.delete(oldLogoKey);
       return json({ ok: true });
     }
     if (path === "invitations" && method === "POST") {
@@ -300,7 +403,7 @@ export async function handleApi(request: Request): Promise<Response> {
           companyId,
           kind: "document",
           title: file.name.slice(0, 240),
-          date: now.slice(0, 10),
+          date: z.iso.date().parse(form.get("date") || now.slice(0, 10)),
           amount: 0,
           category: String(form.get("folder") || "Company").slice(0, 100),
           status: "active",

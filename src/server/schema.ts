@@ -83,6 +83,7 @@ export const rateLimit = sqliteTable("rate_limit", {
 });
 export const companies = sqliteTable("companies", {
   id: text("id").primaryKey(),
+  logoKey: text("logo_key").notNull().default(""),
   name: text("name").notNull(),
   industry: text("industry").notNull().default(""),
   currency: text("currency").notNull().default("EUR"),

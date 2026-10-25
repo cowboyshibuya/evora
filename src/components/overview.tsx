@@ -9,14 +9,12 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   ArrowRight,
-  Check,
   ChevronRight,
   Download,
   Plus,
   Receipt,
   TrendingUp,
 } from "lucide-react";
-import { format } from "date-fns";
 import { useWorkspace } from "@/lib/workspace-context";
 import {
   categoryTotals,
@@ -28,12 +26,13 @@ import { cn, money, shortDate, today } from "@/lib/utils";
 import {
   Avatar,
   CheckButton,
+  Logo,
   Empty,
   FileIcon,
   PageHeader,
   PanelHeading,
 } from "./common";
-import { invoiceStatus, isOutstandingInvoice } from "@/lib/invoices";
+import { isOutstandingInvoice } from "@/lib/invoices";
 import { Button } from "./ui/button";
 import { PeriodPicker, usePeriod } from "./period-picker";
 import { Select } from "./ui/select";
@@ -50,7 +49,6 @@ export function Overview() {
   const outstanding = entries.filter(
       (e) => isOutstandingInvoice(e) && e.data.direction !== "payable",
     ),
-    overdue = outstanding.filter((e) => invoiceStatus(e) === "overdue"),
     unpaid = outstanding.reduce((s, e) => s + e.amount, 0);
   const events = entries
       .filter((e) => e.kind === "event" && e.status === "pending")
@@ -126,9 +124,7 @@ export function Overview() {
   return (
     <>
       <PageHeader
-        eyebrow={format(new Date(), "EEEE, dd MMMM yyyy")}
         title={`${greeting}, ${user.name.split(" ")[0]}.`}
-        description="A little clarity. A lot less admin. Here’s your company at a glance."
         actions={
           <>
             <PeriodPicker period={period} onChange={setPeriod} />
@@ -197,7 +193,6 @@ export function Overview() {
         <section className="panel cashflow-panel">
           <PanelHeading
             title="Cash flow"
-            description="The ins and outs of your business."
             action={
               <Select
                 className="compact-select"
@@ -242,7 +237,6 @@ export function Overview() {
         <section className="panel upcoming-panel">
           <PanelHeading
             title="Coming up"
-            description="A little planning goes a long way."
             action={
               <Button
                 variant="ghost"
@@ -307,11 +301,6 @@ export function Overview() {
         <section className="panel invoices-panel">
           <PanelHeading
             title="Invoices to keep an eye on"
-            description={
-              overdue.length
-                ? `${overdue.length} overdue. A friendly follow-up could help.`
-                : "Stay on top of what’s coming in."
-            }
             action={
               <Link
                 className="text-link"
@@ -373,10 +362,7 @@ export function Overview() {
           </>
         </section>
         <section className="panel expense-panel">
-          <PanelHeading
-            title="Where it goes"
-            description="Your expenses, made a little clearer."
-          />
+          <PanelHeading title="Where it goes" />
           <div className="expense-total">
             {money(current.expenses, company?.currency)}
             <span>{period.label.toLowerCase()}</span>
@@ -444,15 +430,9 @@ export function Overview() {
           )}
         </div>
       </section>
-      <div className="overview-footnote">
-        <span>
-          <Check size={13} />
-          Everything in its place. A little peace of mind.
-        </span>
-        <span>
-          Made for the way you work.<span className="mini-brand">evora.</span>
-        </span>
-      </div>
+      <footer className="overview-footnote">
+        <Logo variant="monochrome" />
+      </footer>
     </>
   );
 }

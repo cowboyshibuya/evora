@@ -58,7 +58,6 @@ export function Documents() {
     <>
       <PageHeader
         title="Everything has a home here."
-        description="Contracts, receipts, company records. Your documents, together at last."
         actions={
           <>
             <Button variant="outline" onClick={() => exportData("document")}>

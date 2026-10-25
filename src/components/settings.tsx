@@ -2,7 +2,6 @@ import { CURRENCIES, FISCAL_MONTH_OPTIONS } from "@/lib/company-options";
 import { canManageCompany } from "@/lib/permissions";
 import { useEffect, useState } from "react";
 import {
-  Building2,
   Copy,
   Download,
   Laptop,
@@ -20,15 +19,14 @@ import { Field, Input, Textarea } from "./ui/input";
 import { Select } from "./ui/select";
 import { Tabs } from "./ui/tabs";
 import { Avatar, PageHeader, PanelHeading } from "./common";
+import { CompanyLogoUpload } from "./company-logo";
+import { companyLogoUrl, companyRequestBody } from "@/lib/company-logo";
 
 export function Settings() {
   const [tab, setTab] = useState("company");
   return (
     <>
-      <PageHeader
-        title="Make yourself at home."
-        description="Your company, your team, and the little details that make Evora yours."
-      />
+      <PageHeader title="Make yourself at home." />
       <Tabs
         label="Settings sections"
         value={tab}
@@ -66,17 +64,16 @@ function CompanySettings() {
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     canAdmin = canManageCompany(company.role);
+  const [logo, setLogo] = useState<File | null>();
   useEffect(() => {
     setValues(company);
+    setLogo(undefined);
   }, [company.id]);
   const update = (key: string, value: string | number) =>
     setValues((v) => ({ ...v, [key]: value }));
   return (
     <section className="panel settings-panel">
-      <PanelHeading
-        title="Company details"
-        description="The details that appear on your invoices and exports."
-      />
+      <PanelHeading title="Company details" />
       <form
         onSubmit={async (e) => {
           e.preventDefault();
@@ -85,10 +82,11 @@ function CompanySettings() {
           try {
             await api(
               "company",
-              { method: "PUT", body: JSON.stringify(values) },
+              { method: "PUT", body: companyRequestBody(values, logo) },
               company.id,
             );
             await reload();
+            setLogo(undefined);
             toast.success("Company details updated.");
           } catch (e) {
             setError((e as Error).message);
@@ -97,17 +95,21 @@ function CompanySettings() {
           }
         }}
       >
-        <fieldset disabled={!canAdmin} className="settings-form">
+        <fieldset disabled={!canAdmin || busy} className="settings-form">
           <div className="company-identity">
-            <span className="settings-company-icon">
-              <Building2 size={27} />
-            </span>
             <div>
               <h3>{company.name}</h3>
               <p>{company.industry}</p>
             </div>
             <span className="category-badge">{company.role}</span>
           </div>
+          <CompanyLogoUpload
+            name={values.name}
+            currentUrl={companyLogoUrl(company)}
+            file={logo}
+            onChange={setLogo}
+            disabled={!canAdmin || busy}
+          />
           <div className="form-grid">
             <Field label="Company name">
               <Input
@@ -213,10 +215,7 @@ function AccountSettings() {
   return (
     <div className="settings-stack">
       <section className="panel settings-panel">
-        <PanelHeading
-          title="Your profile"
-          description="A familiar face in your company’s workspace."
-        />
+        <PanelHeading title="Your profile" />
         <form
           className="settings-form"
           onSubmit={async (e) => {
@@ -278,16 +277,7 @@ function AccountSettings() {
       ) : (
         <>
           <section className="panel settings-panel">
-            <PanelHeading
-              title="Sign-in & security"
-              description="Your Google or GitHub account manages your password and account recovery."
-            />
-          </section>
-          <section className="panel settings-panel">
-            <PanelHeading
-              title="Active sessions"
-              description="Devices currently signed in to your account."
-            />
+            <PanelHeading title="Active sessions" />
             <div className="session-list">
               {sessions.map((s) => (
                 <div className="session-item" key={s.token}>
@@ -341,7 +331,6 @@ function TeamSettings() {
       <section className="panel settings-panel">
         <PanelHeading
           title="A good team makes all the difference."
-          description={`${workspace.members.length} ${workspace.members.length === 1 ? "person" : "people"} in ${workspace.company?.name}.`}
           action={
             <Button
               size="sm"
@@ -591,10 +580,7 @@ function DataSettings() {
   return (
     <div className="settings-stack">
       <section className="panel settings-panel">
-        <PanelHeading
-          title="Your data belongs to you."
-          description="Export a single collection, a period, or everything. No lock-in."
-        />
+        <PanelHeading title="Your data belongs to you." />
         <div className="settings-form">
           <div className="data-export-summary">
             <Download size={29} />

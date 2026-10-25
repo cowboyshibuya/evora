@@ -33,7 +33,6 @@ export function Reports() {
     <>
       <PageHeader
         title="See the bigger picture."
-        description="Simple reports to understand where you are, and plan where you’re going."
         actions={
           <>
             <PeriodPicker period={period} onChange={setPeriod} />
@@ -77,7 +76,6 @@ export function Reports() {
                   ? "Cash flow statement"
                   : "Income & expense statement"
             }
-            description={`${workspace.company?.name} · ${period.label}`}
           />
           <div className="statement-body">
             {tab === "vat" ? (
@@ -155,10 +153,7 @@ export function Reports() {
           </div>
         </section>
         <section className="panel report-insights">
-          <PanelHeading
-            title="A year in perspective"
-            description="Monthly income and expenses."
-          />
+          <PanelHeading title="A year in perspective" />
           <CashFlowChart
             entries={workspace.entries}
             months={12}

@@ -643,16 +643,6 @@ kbd {
   position: relative;
   font-weight: 650;
   letter-spacing: -0.1em;
-  padding-bottom: 5px;
-}
-.company-monogram > span {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--primary);
-  position: absolute;
-  right: 5px;
-  bottom: 6px;
 }
 .company-switcher > span:nth-child(2) {
   min-width: 0;
@@ -874,24 +864,6 @@ kbd {
   background: var(--primary-soft);
   color: var(--primary);
 }
-.open-source-badge {
-  display: flex;
-  gap: 5px;
-  align-items: center;
-  font-size: 9px;
-  color: var(--muted-foreground);
-  background: transparent;
-  border: 0;
-  padding: 8px 3px 17px;
-  width: 100%;
-}
-.open-source-badge > span {
-  margin-inline-start: auto;
-  width: 4px;
-  height: 4px;
-  background: var(--chart-3);
-  border-radius: 50%;
-}
 .main-shell {
   margin-inline-start: var(--sidebar-width);
   min-width: 0;
@@ -1007,12 +979,6 @@ kbd {
 .page-heading > div:first-child {
   min-width: 0;
 }
-.page-heading p {
-  margin-top: 9px;
-  color: var(--muted-foreground);
-  font-size: 12px;
-  line-height: 1.6;
-}
 .page-actions {
   display: flex;
   gap: 9px;
@@ -1045,11 +1011,6 @@ kbd {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-}
-.panel-heading p {
-  font-size: 10px;
-  color: var(--muted-foreground);
-  margin-top: 4px;
 }
 .section-heading {
   display: flex;
@@ -1584,7 +1545,7 @@ i {
 }
 .overview-footnote {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   gap: 16px;
   font-size: 9px;
@@ -1592,18 +1553,6 @@ i {
   margin-top: 30px;
   padding-top: 18px;
   border-top: 1px solid var(--border-soft);
-}
-.overview-footnote > span {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-.mini-brand {
-  font-size: 15px;
-  font-weight: 650;
-  color: var(--muted-foreground);
-  letter-spacing: -0.06em;
-  margin-inline-start: 4px;
 }
 
 .summary-strip {
@@ -2054,17 +2003,6 @@ i {
   background: var(--primary-soft);
   border-color: transparent;
 }
-.onboarding-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 58px;
-  height: 58px;
-  border: 1px solid var(--border);
-  border-radius: 13px;
-  background: var(--muted);
-  color: var(--primary);
-}
 .onboarding-summary {
   display: flex;
   gap: 13px;
@@ -2245,6 +2183,7 @@ i {
   grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 .calendar-day {
+  position: relative;
   border-inline-end: 1px solid var(--border-soft);
   border-bottom: 1px solid var(--border-soft);
   min-height: 104px;
@@ -2265,6 +2204,9 @@ i {
   box-shadow: inset 0 0 0 1px var(--chart-3);
 }
 .day-number {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2281,6 +2223,9 @@ i {
   color: white;
 }
 .day-events {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
   margin-top: 5px;
   display: flex;
   flex-direction: column;
@@ -2921,16 +2866,6 @@ i {
   gap: 14px;
   padding-bottom: 9px;
 }
-.settings-company-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 54px;
-  height: 54px;
-  background: var(--primary-soft);
-  color: var(--primary);
-  border-radius: 11px;
-}
 .company-identity > div {
   flex: 1;
 }
@@ -3407,9 +3342,6 @@ i {
   .page-heading h1 {
     font-size: 25px;
   }
-  .page-heading p {
-    font-size: 11px;
-  }
   .panel-heading {
     padding-inline: 16px;
   }
@@ -3542,9 +3474,6 @@ i {
   .metric-card {
     padding: 17px 18px;
   }
-  .overview-footnote > span:last-child {
-    display: none;
-  }
   .document-grid,
   .notes-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3672,10 +3601,6 @@ i {
   .page-heading h1 {
     font-size: 27px;
   }
-  .page-heading p {
-    font-size: 12px;
-    max-width: 450px;
-  }
   .metrics-grid {
     gap: 13px;
     margin-bottom: 20px;
@@ -3700,9 +3625,6 @@ i {
   }
   .panel-heading {
     padding-inline: 19px;
-  }
-  .panel-heading p {
-    font-size: 11px;
   }
   .upcoming-description > span {
     font-size: 10px;
@@ -4177,4 +4099,166 @@ i {
   .report-highlight p {
     font-size: 9px;
   }
+}
+
+.brand-monochrome > span {
+  font-size: 15px;
+  color: var(--muted-foreground);
+  letter-spacing: -0.06em;
+}
+.brand-monochrome .brand-dot {
+  color: inherit;
+}
+.company-avatar {
+  flex-shrink: 0;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+}
+.company-avatar img,
+.company-logo-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--background);
+  border-radius: inherit;
+  outline: 1px solid oklch(0 0 0 / 0.1);
+  outline-offset: -1px;
+}
+.company-logo-upload {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.company-logo-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.company-logo-actions {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.company-logo-upload .field-hint {
+  display: block;
+  margin-top: 7px;
+  font-size: 10px;
+}
+.keyboard-shortcut {
+  display: inline-flex;
+  gap: 3px;
+  margin-inline-start: auto;
+  white-space: nowrap;
+}
+.keyboard-shortcut kbd {
+  min-width: 19px;
+  text-align: center;
+  padding: 1px 4px;
+  font-size: 9px;
+  font-family: inherit;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--background);
+}
+.quick-add-dropdown {
+  min-width: 250px;
+}
+.calendar-day-add {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+}
+.calendar-day-add:focus-visible {
+  outline-offset: -3px;
+}
+.calendar-day-plus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 6px;
+  right: 5px;
+  width: 24px;
+  height: 24px;
+  color: var(--muted-foreground);
+  border-radius: 5px;
+  opacity: 0;
+}
+.calendar-day:hover .calendar-day-plus,
+.calendar-day:focus-within .calendar-day-plus,
+.calendar-day-add[data-state="open"] .calendar-day-plus {
+  opacity: 1;
+}
+.day-events button {
+  pointer-events: auto;
+}
+.mobile-event-dots {
+  position: relative;
+  pointer-events: none;
+}
+.breadcrumb-company:hover {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (hover: none), (max-width: 640px) {
+  .calendar-day-plus {
+    top: auto;
+    bottom: 2px;
+    right: 2px;
+    width: 16px;
+    height: 16px;
+  }
+}
+@media (hover: none) {
+  .calendar-day-plus {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .calendar-day-plus {
+    transition: opacity 120ms ease;
+  }
+}
+
+.help-shortcuts {
+  padding-top: 18px;
+  border-top: 1px solid var(--border-soft);
+}
+.help-shortcuts h3 {
+  font-size: 13px;
+}
+.help-shortcuts > p {
+  margin-top: 7px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.help-shortcuts dl {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+.help-shortcuts dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  font-size: 12px;
+}
+.help-shortcuts dd {
+  margin: 0;
 }

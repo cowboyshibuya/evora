@@ -7,14 +7,18 @@ export function Dropdown({
   children,
   align = "end",
   className,
+  onOpenChange,
+  modal = true,
 }: {
   trigger: ReactNode;
   children: ReactNode;
   align?: "start" | "end";
   className?: string;
+  onOpenChange?: (open: boolean) => void;
+  modal?: boolean;
 }) {
   return (
-    <Menu.Root>
+    <Menu.Root onOpenChange={onOpenChange} modal={modal}>
       <Menu.Trigger asChild>{trigger}</Menu.Trigger>
       <Menu.Portal>
         <Menu.Content

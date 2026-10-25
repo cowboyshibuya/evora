@@ -36,13 +36,15 @@ The initial SQL migration is applied automatically **in development only**. Prod
 ## Features
 
 - Google and GitHub sign-in/sign-up through Better Auth, sign-out, session listing and revocation
-- Multiple companies, a company switcher, onboarding and company settings
+- Multiple companies, a company switcher, onboarding and company settings with private company-logo uploads
 - Owner, admin, member and viewer access; expiring email-bound invitation links
 - Income and expense transactions, category filters, period filters, search and pagination
 - CSV import with column mapping, validation, previews and duplicate-file protection
 - Sales invoices and supplier bills, quantity and VAT calculation, drafts, due dates, overdue detection, PDF generation and payment recording
 - Atomic, idempotent invoice payments; paid invoices and their payment records are locked against editing and deletion
 - Calendar with invoice due dates, reminders and monthly/annual recurrence; completing a repeating reminder creates its next occurrence
+- Calendar day quick-add menus that carry the selected date into new records and document uploads
+- Two-key creation shortcuts, shown in the shared quick-add menus and Help & shortcuts
 - Documents with folder organization, drag-and-drop upload, downloads of original files and deletion
 - Notes with collections, pinning, editing and Markdown exports
 - Client, supplier, partner and accountant contacts
@@ -51,6 +53,27 @@ The initial SQL migration is applied automatically **in development only**. Prod
 - Period and collection exports to Excel, CSV, JSON and ICS; complete ZIP archives with original documents, Markdown notes and generated invoice PDFs
 
 All monetary values are stored as integer minor units (cents). A company has a single currency. Company currency cannot be changed once transactions exist. Date-only values are stored as ISO `YYYY-MM-DD`; timestamps use UTC.
+
+## Company logos
+
+Choose a PNG, JPEG, or WebP logo (up to 2 MB) during onboarding or in **Settings → Company**. Company details and the selected logo save together. Admins and owners can replace or remove the logo; other company members can view it. Files stay in private R2 storage and are served through a company-scoped endpoint. Complete ZIP exports include the logo’s original bytes.
+
+Apply `migrations/0003_company_logos.sql` in production before running this version. Existing companies start without a logo and retain their records. Local development applies pending migrations automatically.
+
+## Keyboard shortcuts
+
+Press **N**, then the second key within 1.2 seconds. These are sequences, not simultaneous key presses.
+
+| Sequence | Action          |
+| -------- | --------------- |
+| N → I    | Create invoice  |
+| N → T    | Add transaction |
+| N → R    | Create reminder |
+| N → N    | Write a note    |
+| N → C    | Add contact     |
+| N → D    | Upload document |
+
+Creation shortcuts pause while typing in a field, using a menu, or working in a dialog. They also respect company roles. `⌘ K` / `Ctrl K` continues to open search.
 
 ## Authentication
 
@@ -93,7 +116,7 @@ Company admins create a seven-day invitation for an email address and role, then
 
 Passwords, verification emails and recovery emails are managed by the provider. Evora's email/password signup, sign-in, reset and change endpoints are disabled. Active Evora sessions can still be viewed and revoked in **Settings → My account**. Better Auth retains its origin, state/PKCE, cookie and verified-email account-linking protections, plus database-backed rate limits.
 
-The existing auth tables already support OAuth, so this change needs no new SQL migration. Existing **verified** users can sign in with a provider using the same verified address and retain their companies. Legacy unverified password-only accounts are not automatically linked; they need an explicit administrator-assisted ownership migration. Do not mark them verified in bulk. Historical migrations and the nullable credential column remain intact for existing databases; the development email inbox is no longer exposed or written to.
+The existing auth tables already support OAuth, so the authentication change itself required no new SQL migration. Company logos require migration `0003`, as described above. Existing **verified** users can sign in with a provider using the same verified address and retain their companies. Legacy unverified password-only accounts are not automatically linked; they need an explicit administrator-assisted ownership migration. Do not mark them verified in bulk. Historical migrations and the nullable credential column remain intact for existing databases; the development email inbox is no longer exposed or written to.
 
 ## Cloudflare CLI and deployment
 
@@ -131,7 +154,7 @@ bunx playwright install chromium
 bun run test
 ```
 
-Shared-domain tests cover fractional invoice-line rounding, zero-rate VAT, recorded invoice totals, due status, and the role permission matrix. The browser suite exercises persistence, switching companies, uploads and downloads, onboarding, VAT and invoice payment accounting, duplicate payment protection, PDF/Excel exports, cross-company access denial, viewer permissions, invitations, recurrence, OAuth callback state, provider failures, disabled credential endpoints and session revocation. It also checks core routes with axe and covers narrow-screen navigation. Browser tests use an isolated local server on port 3001 and a provider-boundary mock loaded only by `tests/vite.config.ts`; the real Better Auth session and callback handling remains in use. Production builds use `vite.config.ts` and contain no OAuth mock. A live Google/GitHub round trip still needs a manual check with real provider credentials.
+Shared-domain tests cover fractional invoice-line rounding, zero-rate VAT, recorded invoice totals, due status, and the role permission matrix. The browser suite exercises persistence, switching companies, uploads and downloads, onboarding, VAT and invoice payment accounting, duplicate payment protection, PDF/Excel exports, cross-company access denial, viewer permissions, invitations, recurrence, OAuth callback state, provider failures, disabled credential endpoints and session revocation. It also checks core routes with axe and covers narrow-screen navigation. Logo coverage checks onboarding, replacement/removal, original-byte exports, input validation and company/role boundaries. Calendar and hotkey tests check selected dates, document uploads, typing guards and touch-sized layouts. The logo migration is tested against an existing database with company records. Browser tests use an isolated local server on port 3001 and a provider-boundary mock loaded only by `tests/vite.config.ts`; the real Better Auth session and callback handling remains in use. Production builds use `vite.config.ts` and contain no OAuth mock. A live Google/GitHub round trip still needs a manual check with real provider credentials.
 
 ## Project layout
 

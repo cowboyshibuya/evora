@@ -59,7 +59,6 @@ export function Transactions() {
     <>
       <PageHeader
         title="Every movement, accounted for."
-        description="Money in, money out. Keep a clear picture of your company’s finances."
         actions={
           <>
             <Button

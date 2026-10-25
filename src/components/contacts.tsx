@@ -30,7 +30,6 @@ export function Contacts() {
     <>
       <PageHeader
         title="The people behind the work."
-        description="Clients, partners, suppliers. Keep the right details close at hand."
         actions={
           <>
             <Button variant="outline" onClick={() => exportData("contact")}>

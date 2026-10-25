@@ -11,6 +11,8 @@ import { Dialog } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Field, Input } from "./ui/input";
 import { Select } from "./ui/select";
+import { CompanyLogoUpload } from "./company-logo";
+import { companyRequestBody } from "@/lib/company-logo";
 
 export function CompanyDialog({
   onClose,
@@ -31,6 +33,7 @@ export function CompanyDialog({
     [fiscalMonth, setFiscalMonth] = useState("1"),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const [logo, setLogo] = useState<File | null>(null);
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (step === 1) return setStep(2);
@@ -39,15 +42,18 @@ export function CompanyDialog({
     try {
       const result = await api<{ id: string }>("companies", {
         method: "POST",
-        body: JSON.stringify({
-          name,
-          industry,
-          country,
-          currency,
-          email,
-          taxId,
-          fiscalMonth: Number(fiscalMonth),
-        }),
+        body: companyRequestBody(
+          {
+            name,
+            industry,
+            country,
+            currency,
+            email,
+            taxId,
+            fiscalMonth: Number(fiscalMonth),
+          },
+          logo || undefined,
+        ),
       });
       toast.success(`${name} is ready. Welcome to your workspace.`);
       onCreated(result.id);
@@ -77,9 +83,12 @@ export function CompanyDialog({
           </div>
           {step === 1 ? (
             <>
-              <div className="onboarding-icon">
-                <Building2 size={27} />
-              </div>
+              <CompanyLogoUpload
+                name={name}
+                file={logo}
+                onChange={setLogo}
+                disabled={busy}
+              />
               <Field label="Company name">
                 <Input
                   autoFocus
