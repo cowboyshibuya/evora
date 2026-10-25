@@ -16,6 +16,7 @@
 - Run `bun run typecheck`, relevant tests, and `bun run build` after changes to shared behavior. Keep meaningful coverage for money rounding, company isolation, permissions, exports, and keyboard/mobile interactions.
 - Preserve existing app behavior and page layouts during refactors unless a behavior change is explicitly part of the request.
 - Never commit credentials, local database state, or real company documents.
+- Production releases use `bun run build:ci` followed by `bun run deploy`. Keep the migration-before-publication checks in `scripts/deploy.ts`; do not bypass them with a direct deploy command. Keep production resource identifiers in `config/production.ts` and use separate resources for previews.
 
 ## Cloudflare CLI - cf - v20260928
 

@@ -6,11 +6,16 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "bun run types && tsc --noEmit",
     "test": "playwright test",
     "test:ui": "playwright test --ui",
-    "format": "prettier --write src tests *.ts *.json *.jsonc *.md",
-    "cf": "cf"
+    "format": "prettier --write src tests config scripts .github *.ts *.json *.md",
+    "cf": "cf",
+    "types": "cf workers types --mode production --include-runtime=false",
+    "build:ci": "bun run typecheck && bun run test:unit && bun run build && bun run deploy:check",
+    "deploy:check": "cf deploy --prebuilt --mode production --dry-run",
+    "deploy": "node scripts/deploy.ts",
+    "test:unit": "playwright test --config tests/unit.config.ts"
   },
   "keywords": [],
   "author": "",
@@ -47,7 +52,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
-    "@cloudflare/vite-plugin": "^1.64.0",
+    "@cloudflare/vite-plugin": "2.0.0-beta.v.4",
     "@cloudflare/workers-types": "^5.20261019.1",
     "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "^4.3.3",
@@ -56,12 +61,15 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
-    "cf": "^1.0.0-beta.18",
+    "cf": "1.0.0-beta.18",
     "prettier": "^3.9.10",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
     "vite": "^8.3.4"
   },
   "private": true,
-  "packageManager": "bun@1.4.3"
+  "packageManager": "bun@1.4.3",
+  "engines": {
+    "node": ">=22.18.0"
+  }
 }

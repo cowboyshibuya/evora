@@ -18,5 +18,14 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["src", "vite.config.ts", "tests", "playwright.config.ts"]
+  "include": [
+    "src",
+    "config",
+    "scripts",
+    "cloudflare.config.ts",
+    ".cloudflare/types/index.d.ts",
+    "vite.config.ts",
+    "tests",
+    "playwright.config.ts"
+  ]
 }

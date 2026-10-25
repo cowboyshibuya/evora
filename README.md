@@ -20,7 +20,7 @@ Company records are relational, and D1 fits the Workers runtime without an exter
 
 ## Run locally
 
-Requires Bun 1.4+ and a Node.js version supported by Vite and the Cloudflare Vite plugin. No Cloudflare account is needed for local development.
+Requires Bun 1.4+ and Node.js 24 (see `.node-version`; the CLI requires at least 22.18). No Cloudflare account is needed for local development.
 
 ```sh
 bun install
@@ -31,7 +31,7 @@ Open **http://localhost:3000**. The Cloudflare Vite plugin runs the actual Worke
 
 The first visit opens a **private anonymous demo** with two sample companies. Demo data is isolated per session. Visit `/auth?mode=signup` to create an account and start an empty company. Company onboarding supports currency, country, VAT number and financial-year start month.
 
-The initial SQL migration is applied automatically **in development only**. Production requires applying all SQL migrations in `migrations/` before serving traffic.
+Pending SQL migrations are applied automatically during local development. In production, the deployment script applies pending migrations before publishing the Worker.
 
 ## Features
 
@@ -58,7 +58,7 @@ All monetary values are stored as integer minor units (cents). A company has a s
 
 Choose a PNG, JPEG, or WebP logo (up to 2 MB) during onboarding or in **Settings → Company**. Company details and the selected logo save together. Admins and owners can replace or remove the logo; other company members can view it. Files stay in private R2 storage and are served through a company-scoped endpoint. Complete ZIP exports include the logo’s original bytes.
 
-Apply `migrations/0003_company_logos.sql` in production before running this version. Existing companies start without a logo and retain their records. Local development applies pending migrations automatically.
+Migration `0003_company_logos.sql` is applied by the production deployment script. Existing companies start without a logo and retain their records. Local development applies pending migrations automatically.
 
 ## Keyboard shortcuts
 
@@ -84,13 +84,13 @@ For local OAuth, copy `.env.example` to `.dev.vars` (ignored by Git), add the cr
 | Name                   | Purpose                                                                          |
 | ---------------------- | -------------------------------------------------------------------------------- |
 | `BETTER_AUTH_SECRET`   | Random secret of at least 32 characters; generate with `openssl rand -base64 32` |
-| `APP_URL`              | Exact production HTTPS origin, including the assigned `workers.dev` hostname     |
+| `APP_URL`              | Set from `config/production.ts`; local development uses `http://localhost:3000`  |
 | `GOOGLE_CLIENT_ID`     | Google OAuth web application client ID                                           |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret                                                       |
 | `GITHUB_CLIENT_ID`     | GitHub OAuth App client ID                                                       |
 | `GITHUB_CLIENT_SECRET` | GitHub OAuth App client secret                                                   |
 
-Keep the client secrets and `BETTER_AUTH_SECRET` in **Cloudflare Worker secrets**. Client IDs and `APP_URL` may be Worker variables. Both credentials are required to enable each provider. `APP_URL` is the base URL explicitly passed to Better Auth; a separate `BETTER_AUTH_URL` variable is not needed.
+The five authentication values are declared as **Cloudflare Worker secrets** in `cloudflare.config.ts`. Store them in the Worker's **Settings → Variables & Secrets** for production, or in `.dev.vars`/`.env.local` for local development. Local secret files are never uploaded by the deployment script. Both credentials are required to enable each provider. `APP_URL` is an inline configuration binding, not a secret; change the production origin in `config/production.ts`. It is explicitly passed to Better Auth, so a separate `BETTER_AUTH_URL` variable is not needed.
 
 ### Google setup
 
@@ -129,26 +129,46 @@ bun run cf auth login
 bun run cf cli search "list D1 databases"
 ```
 
-Bun installs and launches the package; the CLI's executable runs with Node.js (22.18 or newer), as required by Cloudflare. Version `1.0.0-beta.18` was verified locally. Account provisioning and remote deployment have not been exercised by this project’s test suite.
+Bun installs and launches the package; the CLI's executable runs with Node.js. The CLI and Vite plugin v2 beta are pinned in `package.json` and `bun.lock`. The project uses typed `cloudflare.config.ts` configuration and emits deployable Build Output in `.cloudflare/output/v0/`. Local storage stays in `.wrangler/state/`, with remote development bindings disabled. [Cloudflare project workflow](https://developers.cloudflare.com/cf/projects/).
 
 Account and resource commands can be used independently of the app's build integration. Use `bun run cf --help` or `bun run cf cli search "describe the resource operation"` to find the current commands. Do not include credentials or identifying values in discovery queries.
 
-The app's existing **Cloudflare Vite plugin v1** reads `cloudflare.config.jsonc`. Keep using `bun run dev` and `bun run build` for this integration. Cloudflare's new `cf dev`, `cf build`, and `cf deploy` workflow requires `cloudflare.config.ts` and a compatible build integration; that migration is separate from installing the CLI. The current CLI can automatically rewrite a project that has no `cloudflare.config.ts`, so preserve the existing entrypoint, `DB`/`FILES` bindings and local storage when deliberately migrating. See the [official project workflow](https://developers.cloudflare.com/cf/projects/).
+`config/production.ts` is the shared source of truth for the production account, Worker, D1 database, R2 bucket, branch, and app origin. Its identifiers are public configuration, not credentials. Forks must replace these values with their own resources. Keep binding names `DB` and `FILES`. Worker binding types are generated from the configuration by `bun run types`; `bun run typecheck` runs this automatically.
 
-Before remote deployment:
+### Connect GitHub to Workers Builds
 
-1. Authenticate with `bun run cf auth login` and select the intended account.
-2. Create a D1 database and an R2 bucket using commands discovered through the CLI. Replace the placeholder D1 `database_id`, database name and bucket name in `cloudflare.config.jsonc` with your resources. Keep the binding names `DB` and `FILES`.
-3. Set `APP_URL` to the deployed HTTPS origin and configure the secrets above.
-4. Apply the SQL files in `migrations/` to your production D1 database, in filename order.
-5. Complete the build integration migration before using `cf` project commands, and run the relevant checks.
+1. Confirm the resources and HTTPS origin in `config/production.ts`. The current target uses the existing `evora` D1 database and private `evora-documents` R2 bucket in the `cowboy` account.
+2. In Cloudflare, create/connect the **evora** Worker to this GitHub repository, with production branch **main** and root directory `/`.
+3. Set **Build command** to `bun run build:ci` and **Deploy command** to `bun run deploy`. Replace the dashboard defaults before the first build. The package manager is Bun, selected by `packageManager` and `bun.lock`; `.node-version` selects Node.js 24.
+4. Select a build API token scoped to the intended account. It needs **D1: Edit** for migrations, **Workers Scripts: Edit** for deployment, and permissions to access the configured R2 bucket. Check the token's permissions: the automatically generated Workers Builds token may omit D1. These are build credentials, separate from the app's runtime secrets. [Build settings and tokens](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/).
+5. Add the five authentication secrets from the Authentication section to the Worker, and configure the production Google/GitHub callback URLs. Do not add them to the repository or make them `VITE_` variables.
+6. Disable **non-production branch / preview builds** initially. Both the config and deployment script refuse previews using production resources. Set up separate D1/R2 resources before enabling previews; do not use a generic deploy command for them.
+7. Trigger the production build. Later pushes to `main` run the same workflow automatically.
 
-No resources are created or published by `bun run build`.
+The build command generates types, checks TypeScript, runs the domain/migration/deployment tests without a browser, builds the app, and performs a Cloudflare deployment dry run. GitHub's separate **Checks** workflow also runs the full browser/accessibility suite on pushes and pull requests. Use that status as a required check on `main` to keep unverified pull requests from being merged; Workers Builds does not wait for a separate GitHub check after a push.
+
+The deploy command checks the compiled account, mode, bindings, and origin; validates the package; applies pending migrations through `cf d1 migrations apply`; confirms none remain; and publishes that same build with `cf deploy --prebuilt`. Errors stop publication. It rejects non-main CI branches and account mismatches before any database operation.
+
+### Migrations and manual releases
+
+Add a new numbered SQL file to `migrations/` whenever the schema changes, and update `src/server/schema.ts`. Do not edit previously applied migrations. D1 tracks applied filenames in `d1_migrations`, so deployments apply only new files. First deployment initializes an empty database. If adopting a database that already had SQL applied outside the migration runner, reconcile its migration history before using automated deployment.
+
+Keep migrations compatible with the currently running Worker: add fields/tables first, deploy code that uses them, and remove obsolete fields in a later release. Code rollback does not reverse database migrations. Use D1 Time Travel when a database restore is needed. Keep one production deployment running at a time.
+
+For a manual release after authentication:
+
+```sh
+bun run build:ci
+bun run deploy
+```
+
+No resources are created or published by `bun run build`, `bun run build:ci`, or `bun run deploy:check`. The production migration and deployment happen only in `bun run deploy`. A successful dry run validates packaging, not remote authentication or runtime secrets. [D1 migration tracking](https://developers.cloudflare.com/d1/reference/migrations/).
 
 ## Checks
 
 ```sh
 bun run typecheck
+bun run test:unit
 bun run build
 bunx playwright install chromium
 bun run test
@@ -165,6 +185,9 @@ src/components/ui/      Shared shadcn/ui and Radix primitives, tables and search
 src/lib/                Shared types, validation, finance and export helpers
 src/server/             D1 schema, authentication, authorization, API and demo seed
 migrations/             Versioned SQL migrations
+config/production.ts    Shared production resource identifiers and origin
+cloudflare.config.ts    Worker bindings and local/production configuration
+scripts/deploy.ts       Validate, migrate, verify, then publish production
 tests/                  Browser integration tests
 ```
 

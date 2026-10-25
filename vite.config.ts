@@ -10,8 +10,11 @@ export default defineConfig({
   server: { host: "0.0.0.0", port: 3000, allowedHosts: true },
   plugins: [
     cloudflare({
-      configPath: "./cloudflare.config.jsonc",
       viteEnvironment: { name: "ssr" },
+      // Keep local D1/R2 data in the existing directory after the v2 upgrade.
+      persistState: { path: ".wrangler/state" },
+      remoteBindings: false,
+      types: { includeRuntime: false },
     }),
     tailwindcss(),
     tanstackStart(),

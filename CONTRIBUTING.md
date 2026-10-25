@@ -16,6 +16,6 @@ The required reuse and consistency policy is in [AGENTS.md](AGENTS.md). Check th
 
 Server operations must check company membership. Viewers can read and export; members can manage records; admins and owners can manage company settings and access. Never trust a company ID, file key, amount or role from the browser without validation. Invoice payment records must stay atomic and idempotent. Store money in integer minor units.
 
-Add SQL migrations for schema changes, and keep `src/server/schema.ts` aligned. Use isolated sample data in tests. Include meaningful validation for changes to accounting, access control, persistence or authentication.
+Add new numbered SQL migrations for schema changes, and keep `src/server/schema.ts` aligned. Do not rewrite applied migrations. Production releases use `bun run build:ci` followed by `bun run deploy`, which applies pending D1 migrations before publishing the Worker. See the [deployment guide](README.md#cloudflare-cli-and-deployment). Keep changes compatible with the currently running app, and use separate databases and buckets for previews. Use isolated sample data in tests. Include meaningful validation for changes to accounting, access control, persistence or authentication.
 
 Do not commit `.dev.vars`, `.env`, `.wrangler`, exported archives or real customer files. Use Cloudflare's `cf` CLI for account operations and inspect its help for supported commands. There is no Wrangler CLI dependency in the project scripts.
