@@ -1,4 +1,4 @@
-# Evora
+# ![Evora](public/brand/evora-logo-transparent.svg)
 
 A clear space for your company. Evora centralizes day-to-day bookkeeping, invoices, financial planning, documents, notes, and contacts in one minimal workspace.
 
