@@ -1,0 +1,9 @@
+node_modules
+dist
+.wrangler
+.tanstack
+src/routeTree.gen.ts
+bun.lock
+playwright-report
+test-results
+LICENSE

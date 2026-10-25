@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS entries_sales_invoice_number_unique ON entries(company_id, json_extract(data, '$.number')) WHERE kind = 'invoice' AND COALESCE(json_extract(data, '$.direction'), 'receivable') = 'receivable';
