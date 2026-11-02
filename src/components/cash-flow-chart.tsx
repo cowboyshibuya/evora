@@ -75,6 +75,8 @@ export function CashFlowChart({
             cursor={{ stroke: "var(--border)" }}
             contentStyle={{
               borderRadius: 9,
+              background: "var(--card)",
+              color: "var(--foreground)",
               border: "1px solid var(--border)",
               fontSize: 12,
             }}

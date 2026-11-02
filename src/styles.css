@@ -298,7 +298,7 @@ input[type="time"] {
 }
 .button-destructive {
   background: var(--destructive);
-  color: white;
+  color: var(--background);
 }
 .button-destructive:hover {
   filter: brightness(0.95);
@@ -654,12 +654,6 @@ kbd {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.company-switcher small {
-  display: block;
-  font-size: 10px;
-  color: var(--muted-foreground);
-  margin-top: 1px;
 }
 .company-switcher > svg {
   color: var(--muted-foreground);
@@ -1304,7 +1298,7 @@ i {
   border-bottom: 0;
 }
 .data-table tbody tr:hover {
-  background: oklch(0.991 0.002 150);
+  background: var(--muted);
 }
 .data-table th:first-child,
 .data-table td:first-child {
@@ -1400,7 +1394,7 @@ i {
   background: var(--warning-soft);
 }
 .status-draft {
-  background: oklch(0.956 0.004 150);
+  background: var(--muted);
   color: var(--muted-foreground);
 }
 .expense-total {
@@ -3080,7 +3074,7 @@ i {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: oklch(0.974 0.007 150);
+  background: var(--muted);
   border-inline-start: 1px solid var(--border);
   overflow: hidden;
   padding: 65px 40px;
@@ -4261,4 +4255,122 @@ i {
 }
 .help-shortcuts dd {
   margin: 0;
+}
+
+:root {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: oklch(0.225 0.009 160);
+  --foreground: oklch(0.93 0.006 160);
+  --card: oklch(0.25 0.009 160);
+  --primary: oklch(0.75 0.105 160);
+  --primary-hover: oklch(0.81 0.1 160);
+  --primary-foreground: oklch(0.2 0.02 160);
+  --primary-soft: oklch(0.31 0.035 160);
+  --muted: oklch(0.28 0.009 160);
+  --muted-foreground: oklch(0.71 0.012 160);
+  --secondary-foreground: oklch(0.82 0.009 160);
+  --subtle-foreground: oklch(0.67 0.012 160);
+  --border: oklch(0.37 0.012 160);
+  --border-soft: oklch(0.31 0.01 160);
+  --input-background: oklch(0.235 0.009 160);
+  --destructive: oklch(0.76 0.13 25);
+  --destructive-soft: oklch(0.31 0.045 25);
+  --warning: oklch(0.81 0.12 77);
+  --warning-soft: oklch(0.32 0.04 77);
+  --chart-2: oklch(0.65 0.08 160);
+  --chart-3: oklch(0.56 0.06 160);
+  --chart-4: oklch(0.46 0.045 160);
+  --chart-5: oklch(0.36 0.025 160);
+  --shadow: 0 1px 2px oklch(0 0 0 / 0.15);
+  --shadow-float: 0 2px 6px oklch(0 0 0 / 0.18), 0 10px 35px oklch(0 0 0 / 0.3);
+}
+:root[data-theme="dark"] .sidebar-user .avatar,
+:root[data-theme="dark"] .avatar-0,
+:root[data-theme="dark"] .avatar-1,
+:root[data-theme="dark"] .avatar-2 {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+:root[data-theme="dark"] .auth-paper.back,
+:root[data-theme="dark"] .auth-paper.middle {
+  background: var(--muted);
+}
+.appearance-settings {
+  margin-bottom: 24px;
+}
+.profile-picker {
+  position: relative;
+}
+.profile-suggestions {
+  position: absolute;
+  inset-inline: 0;
+  top: calc(100% + 4px);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 5;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: var(--shadow-float);
+}
+.profile-suggestions [role="option"] {
+  padding: 8px 10px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.profile-suggestions [role="option"] span {
+  color: var(--muted-foreground);
+}
+.profile-suggestions [role="option"]:hover,
+.profile-suggestions [role="option"].active {
+  background: var(--primary-soft);
+}
+@media (min-width: 761px) {
+  .sidebar-collapsed {
+    --sidebar-width: 68px;
+  }
+  .sidebar-collapsed .sidebar {
+    padding-inline: 10px;
+  }
+  .sidebar-collapsed .sidebar-brand {
+    padding: 0 0 20px;
+    justify-content: center;
+  }
+  .sidebar-collapsed .sidebar-brand > a,
+  .sidebar-collapsed .company-switcher > span:nth-child(2),
+  .sidebar-collapsed .company-switcher > svg,
+  .sidebar-collapsed .sidebar-search > span,
+  .sidebar-collapsed .sidebar-search > kbd,
+  .sidebar-collapsed .nav-group-label,
+  .sidebar-collapsed .nav-item > span,
+  .sidebar-collapsed .demo-callout,
+  .sidebar-collapsed .user-menu-button > span:not(.avatar),
+  .sidebar-collapsed .user-menu-button > svg {
+    display: none;
+  }
+  .sidebar-collapsed .company-switcher {
+    padding: 7px;
+    justify-content: center;
+  }
+  .sidebar-collapsed .sidebar-search,
+  .sidebar-collapsed .nav-item,
+  .sidebar-collapsed .user-menu-button {
+    justify-content: center;
+    padding-inline: 0;
+  }
+  .sidebar-collapsed .sidebar-navigation > div {
+    margin-top: 6px;
+  }
+}
+@media (max-width: 760px) {
+  .sidebar-toggle {
+    display: none;
+  }
 }

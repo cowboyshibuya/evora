@@ -7,6 +7,7 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { Toaster } from "sonner";
+import { ThemeProvider, themeScript, useTheme } from "@/lib/theme";
 import styles from "../styles.css?url";
 
 export const Route = createRootRoute({
@@ -45,22 +46,32 @@ function Root() {
       }),
   );
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
-        <QueryClientProvider client={client}>
-          <Outlet />
-          <Toaster
-            position="bottom-right"
-            richColors
-            closeButton
-            toastOptions={{ className: "evora-toast" }}
-          />
-        </QueryClientProvider>
+        <ThemeProvider>
+          <QueryClientProvider client={client}>
+            <Outlet />
+            <ThemedToaster />
+          </QueryClientProvider>
+        </ThemeProvider>
         <Scripts />
       </body>
     </html>
+  );
+}
+function ThemedToaster() {
+  const { resolved } = useTheme();
+  return (
+    <Toaster
+      theme={resolved}
+      position="bottom-right"
+      richColors
+      closeButton
+      toastOptions={{ className: "evora-toast" }}
+    />
   );
 }

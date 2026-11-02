@@ -1,3 +1,4 @@
+import { TRANSACTION_CATEGORIES, PAYMENT_METHODS } from "./transaction-options";
 import { z } from "zod";
 import { CURRENCIES } from "./company-options";
 export const companyInput = z.object({
@@ -10,6 +11,21 @@ export const companyInput = z.object({
   taxId: z.string().max(80).default(""),
   fiscalMonth: z.number().int().min(1).max(12).default(1),
 });
+const profileFields = z
+  .object({
+    profileId: z.string().min(1).max(500).optional(),
+    saveProfile: z.boolean().optional(),
+  })
+  .passthrough();
+const contactFields = z
+  .object({
+    email: z.union([z.email(), z.literal("")]).optional(),
+    transactionCategory: z.enum(TRANSACTION_CATEGORIES).optional(),
+    method: z.enum(PAYMENT_METHODS).optional(),
+    taxId: z.string().max(80).optional(),
+  })
+  .passthrough();
+
 export const entryInput = z
   .object({
     kind: z.enum([
@@ -28,6 +44,16 @@ export const entryInput = z
     data: z.record(z.string(), z.unknown()).default({}),
   })
   .superRefine((v, ctx) => {
+    const fields = v.kind === "contact" ? contactFields : profileFields;
+    const parsed = fields.safeParse(v.data);
+    if (!parsed.success)
+      for (const issue of parsed.error.issues)
+        ctx.addIssue({
+          code: "custom",
+          message: issue.message,
+          path: ["data", ...issue.path],
+        });
+
     if (v.kind === "transaction" && v.amount === 0)
       ctx.addIssue({
         code: "custom",

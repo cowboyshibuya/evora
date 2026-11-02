@@ -94,3 +94,43 @@ test("browser and API permissions use the same role matrix", () => {
     expect(canManageCompany(role), `${role}: manage company`).toBe(manage);
   }
 });
+
+test("company profiles stay scoped and only fill supported transaction defaults", async () => {
+  const { companyProfiles, profileDefaults, profileFromRecord, profileName } =
+    await import("../src/lib/profiles");
+  const { entryInput } = await import("../src/lib/validation");
+  const contact: Entry = {
+    ...invoice,
+    kind: "contact",
+    title: "Vercel",
+    data: { transactionCategory: "Software", method: "Card" },
+  };
+  expect(
+    companyProfiles(
+      [contact, { ...contact, id: "foreign", companyId: "company-2" }, invoice],
+      "company-1",
+    ),
+  ).toEqual([contact]);
+  expect(profileName("  VERCEL   Inc  ")).toBe("vercel inc");
+  expect(profileDefaults(contact)).toEqual({
+    category: "Software",
+    method: "Card",
+  });
+  expect(
+    profileDefaults({
+      ...contact,
+      data: { transactionCategory: "Unknown", method: "Unknown" },
+    }),
+  ).toEqual({});
+  const profile = profileFromRecord({
+    ...invoice,
+    data: { ...invoice.data, client: "Acme", clientEmail: "hello@example.com" },
+  });
+  expect(profile.category).toBe("Client");
+  expect(profile.data.transactionCategory).toBe("Client work");
+  expect(entryInput.safeParse(profile).success).toBe(true);
+  expect(
+    entryInput.safeParse({ ...contact, data: { method: "Unsupported" } })
+      .success,
+  ).toBe(false);
+});

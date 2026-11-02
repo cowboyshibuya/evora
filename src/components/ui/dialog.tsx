@@ -41,9 +41,7 @@ export function Dialog({
           <div className="dialog-heading">
             <div>
               <Primitive.Title>{title}</Primitive.Title>
-              <Primitive.Description
-                className={description ? "muted" : "sr-only"}
-              >
+              <Primitive.Description className="sr-only">
                 {description || title}
               </Primitive.Description>
             </div>

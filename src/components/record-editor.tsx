@@ -1,3 +1,9 @@
+import {
+  TRANSACTION_CATEGORIES,
+  PAYMENT_METHODS,
+} from "@/lib/transaction-options";
+import { profileDefaults } from "@/lib/profiles";
+import { CompanyProfileField } from "./company-profile-field";
 import { calculateInvoiceTotals } from "@/lib/invoices";
 import { useState } from "react";
 import { Loader2, Plus, Trash2 } from "lucide-react";
@@ -9,18 +15,6 @@ import { useWorkspace } from "@/lib/workspace-context";
 import { money, today } from "@/lib/utils";
 import type { Entry, EntryInput, InvoiceLine, Kind } from "@/lib/types";
 
-const transactionCategories = [
-  "Client work",
-  "Sales",
-  "Software",
-  "Office",
-  "Payroll",
-  "Travel",
-  "Equipment",
-  "Professional services",
-  "Tax",
-  "Other",
-];
 const titles: Record<Kind, string> = {
   transaction: "transaction",
   invoice: "invoice",
@@ -85,14 +79,34 @@ export function RecordEditor({
     time: "09:00",
     number: `INV-${new Date().getFullYear()}-${String(Math.max(0, ...workspace.entries.filter((e) => e.kind === "invoice").map((e) => Number(String(e.data.number).split("-").at(-1)) || 0)) + 1).padStart(3, "0")}`,
     ...initial.data,
+    profileId: workspace.entries.some(
+      (profile) =>
+        profile.kind === "contact" && profile.id === initial.data.profileId,
+    )
+      ? initial.data.profileId
+      : undefined,
   });
   const [lines, setLines] = useState<InvoiceLine[]>(
     (initial.data.lines as InvoiceLine[]) || [
       { description: "", quantity: 1, unitPrice: 0 },
     ],
   );
+  const [saveProfile, setSaveProfile] = useState(false);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const seenTransactionTitles = new Set<string>();
+  const previousTransactions = workspace.entries.filter((record) => {
+    if (
+      record.kind !== "transaction" ||
+      record.data.invoiceId ||
+      record.id === entry?.id ||
+      (record.amount < 0 ? "expense" : "income") !== direction ||
+      seenTransactionTitles.has(record.title)
+    )
+      return false;
+    seenTransactionTitles.add(record.title);
+    return true;
+  });
   const put = (key: string, value: unknown) =>
     setData((current) => ({ ...current, [key]: value }));
   const {
@@ -130,7 +144,13 @@ export function RecordEditor({
           amount: total,
           category,
           status,
-          data: { ...data, ...(kind === "invoice" ? { lines } : {}) },
+          data: {
+            ...data,
+            ...(["transaction", "invoice"].includes(kind)
+              ? { saveProfile }
+              : {}),
+            ...(kind === "invoice" ? { lines } : {}),
+          },
         },
         entry?.id,
       );
@@ -158,7 +178,7 @@ export function RecordEditor({
       <form onSubmit={submit}>
         <fieldset
           className="dialog-body"
-          disabled={!canEdit || Boolean(entry?.data.invoiceId)}
+          disabled={busy || !canEdit || Boolean(entry?.data.invoiceId)}
         >
           {kind === "transaction" && (
             <div className="segmented-control">
@@ -203,11 +223,43 @@ export function RecordEditor({
                         : "e.g. Acme Studio"
               }
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              list={
+                kind === "transaction" ? "previous-transactions" : undefined
+              }
+              onChange={(e) => {
+                setTitle(e.target.value);
+                if (kind !== "transaction" || entry) return;
+                const previous = previousTransactions.find(
+                  (record) => record.title === e.target.value,
+                );
+                if (!previous) return;
+                setAmount(String(Math.abs(previous.amount) / 100));
+                setCategory(previous.category);
+                setData((current) => ({
+                  ...current,
+                  counterparty: previous.data.counterparty || "",
+                  method: previous.data.method || "Bank transfer",
+                  profileId: workspace.entries.some(
+                    (profile) =>
+                      profile.kind === "contact" &&
+                      profile.id === previous.data.profileId,
+                  )
+                    ? previous.data.profileId
+                    : undefined,
+                }));
+                setSaveProfile(false);
+              }}
             />
           </Field>
           {kind === "transaction" && (
             <>
+              <datalist id="previous-transactions">
+                {previousTransactions.map((record) => (
+                  <option key={record.id} value={record.title}>
+                    {String(record.data.counterparty || record.category)}
+                  </option>
+                ))}
+              </datalist>
               <div className="form-grid">
                 <Field label={`Amount (${workspace.company?.currency})`}>
                   <Input
@@ -234,7 +286,7 @@ export function RecordEditor({
                     label="Transaction category"
                     value={category}
                     onValueChange={setCategory}
-                    options={transactionCategories}
+                    options={TRANSACTION_CATEGORIES}
                   />
                 </Field>
                 <Field label="Payment method">
@@ -242,17 +294,33 @@ export function RecordEditor({
                     label="Payment method"
                     value={String(data.method || "Bank transfer")}
                     onValueChange={(v) => put("method", v)}
-                    options={["Bank transfer", "Card", "Cash", "Other"]}
+                    options={PAYMENT_METHODS.map((method) => method)}
                   />
                 </Field>
               </div>
-              <Field label="Client or supplier">
-                <Input
-                  value={String(data.counterparty || "")}
-                  onChange={(e) => put("counterparty", e.target.value)}
-                  placeholder="Company name"
-                />
-              </Field>
+              <CompanyProfileField
+                label="Client or supplier"
+                value={String(data.counterparty || "")}
+                saveProfile={saveProfile}
+                onSaveProfileChange={setSaveProfile}
+                onChange={(value) =>
+                  setData((current) => ({
+                    ...current,
+                    counterparty: value,
+                    profileId: undefined,
+                  }))
+                }
+                onSelect={(profile) => {
+                  const defaults = profileDefaults(profile);
+                  if (defaults.category) setCategory(defaults.category);
+                  setData((current) => ({
+                    ...current,
+                    counterparty: profile.title,
+                    profileId: profile.id,
+                    ...(defaults.method ? { method: defaults.method } : {}),
+                  }));
+                }}
+              />
               <NotesField
                 label="Notes"
                 rows={3}
@@ -287,28 +355,32 @@ export function RecordEditor({
                 />
               </Field>
               <div className="form-grid">
-                <Field
+                <CompanyProfileField
                   label={
                     data.direction === "payable"
                       ? "Supplier name"
                       : "Client name"
                   }
-                >
-                  <Input
-                    required
-                    value={String(data.client || "")}
-                    onChange={(e) => put("client", e.target.value)}
-                    placeholder="Acme Studio"
-                    list="client-list"
-                  />
-                  <datalist id="client-list">
-                    {workspace.entries
-                      .filter((e) => e.kind === "contact")
-                      .map((c) => (
-                        <option key={c.id} value={c.title} />
-                      ))}
-                  </datalist>
-                </Field>
+                  required
+                  value={String(data.client || "")}
+                  saveProfile={saveProfile}
+                  onSaveProfileChange={setSaveProfile}
+                  onChange={(value) =>
+                    setData((current) => ({
+                      ...current,
+                      client: value,
+                      profileId: undefined,
+                    }))
+                  }
+                  onSelect={(profile) =>
+                    setData((current) => ({
+                      ...current,
+                      client: profile.title,
+                      clientEmail: String(profile.data.email || ""),
+                      profileId: profile.id,
+                    }))
+                  }
+                />
                 <Field
                   label={
                     data.direction === "payable"
@@ -456,7 +528,7 @@ export function RecordEditor({
                     label="Bill expense category"
                     value={category}
                     onValueChange={setCategory}
-                    options={transactionCategories.filter(
+                    options={TRANSACTION_CATEGORIES.filter(
                       (c) => !["Client work", "Sales"].includes(c),
                     )}
                   />
@@ -643,6 +715,31 @@ export function RecordEditor({
                   onChange={(e) => put("address", e.target.value)}
                 />
               </Field>
+              <Field label="VAT or tax number">
+                <Input
+                  maxLength={80}
+                  value={String(data.taxId || "")}
+                  onChange={(e) => put("taxId", e.target.value)}
+                />
+              </Field>
+              <div className="form-grid">
+                <Field label="Default transaction category">
+                  <Select
+                    label="Default transaction category"
+                    value={String(data.transactionCategory || "Other")}
+                    onValueChange={(value) => put("transactionCategory", value)}
+                    options={[...TRANSACTION_CATEGORIES]}
+                  />
+                </Field>
+                <Field label="Default payment method">
+                  <Select
+                    label="Default payment method"
+                    value={String(data.method || "Bank transfer")}
+                    onValueChange={(value) => put("method", value)}
+                    options={[...PAYMENT_METHODS]}
+                  />
+                </Field>
+              </div>
               <NotesField
                 label="Notes"
                 rows={3}

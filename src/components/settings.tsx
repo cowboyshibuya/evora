@@ -1,3 +1,4 @@
+import { useTheme, type Theme } from "@/lib/theme";
 import { CURRENCIES, FISCAL_MONTH_OPTIONS } from "@/lib/company-options";
 import { canManageCompany } from "@/lib/permissions";
 import { useEffect, useState } from "react";
@@ -23,10 +24,28 @@ import { CompanyLogoUpload } from "./company-logo";
 import { companyLogoUrl, companyRequestBody } from "@/lib/company-logo";
 
 export function Settings() {
+  const { theme, setTheme } = useTheme();
   const [tab, setTab] = useState("company");
   return (
     <>
       <PageHeader title="Make yourself at home." />
+      <section className="panel settings-panel appearance-settings">
+        <PanelHeading title="Appearance" />
+        <div className="settings-form">
+          <Field label="Theme">
+            <Select
+              label="Theme"
+              value={theme}
+              onValueChange={(value) => setTheme(value as Theme)}
+              options={[
+                { value: "system", label: "System" },
+                { value: "light", label: "Light" },
+                { value: "dark", label: "Dark" },
+              ]}
+            />
+          </Field>
+        </div>
+      </section>
       <Tabs
         label="Settings sections"
         value={tab}

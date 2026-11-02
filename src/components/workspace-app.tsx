@@ -22,6 +22,8 @@ import {
   Loader2,
   LogOut,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   Search,
   Settings2,
@@ -138,6 +140,7 @@ export function WorkspaceApp({ page = "overview" }: { page?: Page }) {
     client = useQueryClient(),
     [companyId, setCompanyId] = useState<string>(),
     [initialized, setInitialized] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [mobileNav, setMobileNav] = useState(false),
     [searchOpen, setSearchOpen] = useState(false),
     [search, setSearch] = useState(""),
@@ -161,6 +164,7 @@ export function WorkspaceApp({ page = "overview" }: { page?: Page }) {
     uploadDate = useRef<string | undefined>(undefined);
   useEffect(() => {
     setCompanyId(localStorage.getItem("evora:company") || undefined);
+    setCollapsed(localStorage.getItem("evora:sidebar-collapsed") === "true");
     setInitialized(true);
   }, []);
   const query = useQuery({
@@ -384,7 +388,7 @@ export function WorkspaceApp({ page = "overview" }: { page?: Page }) {
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
-      <div className="app-shell">
+      <div className={cn("app-shell", collapsed && "sidebar-collapsed")}>
         {mobileNav && (
           <button
             className="mobile-nav-backdrop"
@@ -393,6 +397,7 @@ export function WorkspaceApp({ page = "overview" }: { page?: Page }) {
           />
         )}
         <aside
+          id="workspace-sidebar"
           className={cn("sidebar", mobileNav && "sidebar-open")}
           aria-label="Main navigation"
         >
@@ -400,6 +405,28 @@ export function WorkspaceApp({ page = "overview" }: { page?: Page }) {
             <Link to="/" aria-label="Evora overview">
               <Logo />
             </Link>
+            <Button
+              className="sidebar-toggle"
+              variant="ghost"
+              size="icon"
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-expanded={!collapsed}
+              aria-controls="workspace-sidebar"
+              onClick={() => {
+                setCollapsed(!collapsed);
+                localStorage.setItem(
+                  "evora:sidebar-collapsed",
+                  String(!collapsed),
+                );
+              }}
+            >
+              {collapsed ? (
+                <PanelLeftOpen size={18} />
+              ) : (
+                <PanelLeftClose size={18} />
+              )}
+            </Button>
             <Button
               className="mobile-close"
               variant="ghost"
@@ -414,18 +441,17 @@ export function WorkspaceApp({ page = "overview" }: { page?: Page }) {
             align="start"
             className="company-dropdown"
             trigger={
-              <button className="company-switcher" aria-label="Switch company">
+              <button
+                className="company-switcher"
+                aria-label="Switch company"
+                title={workspace.company?.name || "Switch company"}
+              >
                 <CompanyAvatar
                   company={workspace.company}
                   className="company-monogram"
                 />
                 <span>
                   <strong>{workspace.company?.name || "Your company"}</strong>
-                  <small>
-                    {workspace.user.isAnonymous
-                      ? "Demo workspace"
-                      : "Company workspace"}
-                  </small>
                 </span>
                 <ChevronsUpDown size={14} />
               </button>
@@ -449,6 +475,8 @@ export function WorkspaceApp({ page = "overview" }: { page?: Page }) {
           </Dropdown>
           <button
             className="sidebar-search"
+            aria-label="Search anything"
+            title="Search anything"
             onClick={() => setSearchOpen(true)}
           >
             <Search size={15} />
@@ -465,6 +493,8 @@ export function WorkspaceApp({ page = "overview" }: { page?: Page }) {
                   to={item.page === "overview" ? "/" : "/$page"}
                   params={item.page === "overview" ? {} : { page: item.page }}
                   className={cn("nav-item", page === item.page && "active")}
+                  aria-label={item.label}
+                  title={item.label}
                   aria-current={page === item.page ? "page" : undefined}
                 >
                   <item.icon size={17} />
@@ -496,6 +526,8 @@ export function WorkspaceApp({ page = "overview" }: { page?: Page }) {
             <Link
               to="/$page"
               params={{ page: "settings" }}
+              aria-label="Settings"
+              title="Settings"
               className={cn("nav-item", page === "settings" && "active")}
             >
               <Settings2 size={17} />
@@ -503,6 +535,8 @@ export function WorkspaceApp({ page = "overview" }: { page?: Page }) {
             </Link>
             <button
               className="nav-item help-button"
+              aria-label="Help & shortcuts"
+              title="Help & shortcuts"
               onClick={() => setHelp(true)}
             >
               <CircleHelp size={17} />
@@ -513,7 +547,11 @@ export function WorkspaceApp({ page = "overview" }: { page?: Page }) {
               <Dropdown
                 align="start"
                 trigger={
-                  <button className="user-menu-button">
+                  <button
+                    className="user-menu-button"
+                    aria-label="Account menu"
+                    title={workspace.user.name}
+                  >
                     <Avatar name={workspace.user.name} />
                     <span>
                       <strong>{workspace.user.name}</strong>

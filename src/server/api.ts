@@ -1,3 +1,5 @@
+import { profileFromRecord, profileName } from "../lib/profiles";
+import type { EntryInput } from "../lib/types";
 import { env } from "cloudflare:workers";
 import { and, asc, desc, eq, ne } from "drizzle-orm";
 import { z } from "zod";
@@ -50,6 +52,59 @@ function limitedBody(request: Request, limit: number) {
       }),
     ) ?? null
   );
+}
+
+// Resolve links only within the authorized company. New profiles and their
+// source record are written in the same batch by the caller.
+async function prepareProfile(
+  db: ReturnType<typeof database>,
+  companyId: string,
+  input: EntryInput,
+) {
+  const save = input.data.saveProfile === true;
+  delete input.data.saveProfile;
+  if (!["transaction", "invoice"].includes(input.kind)) return;
+  const contacts = await db
+    .select()
+    .from(entries)
+    .where(and(eq(entries.companyId, companyId), eq(entries.kind, "contact")));
+  if (input.data.profileId) {
+    const linked = contacts.find(
+      (profile) => profile.id === input.data.profileId,
+    );
+    if (!linked) fail(400, "Choose a company profile from this workspace.");
+    return;
+  }
+  const profile = profileFromRecord(input);
+  if (!profile.title) {
+    if (save) fail(400, "Enter a company name to save a profile.");
+    return;
+  }
+  const existing = contacts.find(
+    (contact) => profileName(contact.title) === profileName(profile.title),
+  );
+  if (existing) {
+    input.data.profileId = existing.id;
+    return;
+  }
+  if (!save) return;
+  const validated = entryInput.parse(profile);
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(profileName(profile.title)),
+  );
+  const hash = Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+  const id = `profile_${companyId}_${hash}`;
+  input.data.profileId = id;
+  const now = new Date().toISOString();
+  return {
+    statement: db
+      .insert(entries)
+      .values({ ...validated, id, companyId, createdAt: now, updatedAt: now })
+      .onConflictDoNothing(),
+  };
 }
 
 async function readCompanyRequest(request: Request) {
@@ -439,15 +494,19 @@ export async function handleApi(request: Request): Promise<Response> {
       if (existing.length)
         fail(409, "This file has already been imported into this company.");
       const now = new Date().toISOString();
-      const statements = input.records.map((record, i) =>
-        db.insert(entries).values({
+      // Imported records retain their names, but cannot carry links from a
+      // different workspace or trigger profile creation as a side effect.
+      const statements = input.records.map((record, i) => {
+        delete record.data.profileId;
+        delete record.data.saveProfile;
+        return db.insert(entries).values({
           ...record,
           id: `import_${companyId}_${input.hash}_${i}`,
           companyId,
           createdAt: now,
           updatedAt: now,
-        }),
-      );
+        });
+      });
       await db.batch([statements[0], ...statements.slice(1)]);
       return json({ imported: input.records.length }, 201);
     }
@@ -463,9 +522,12 @@ export async function handleApi(request: Request): Promise<Response> {
       normalizeInvoice(input);
       const id = crypto.randomUUID(),
         now = new Date().toISOString();
-      await db
+      const profile = await prepareProfile(db, companyId!, input);
+      const insert = db
         .insert(entries)
         .values({ ...input, id, companyId, createdAt: now, updatedAt: now });
+      if (profile) await db.batch([insert, profile.statement]);
+      else await insert;
       return json({ id }, 201);
     }
     if (path.startsWith("entries/")) {
@@ -507,7 +569,7 @@ export async function handleApi(request: Request): Promise<Response> {
               json_extract(data, '$.client') || ' · ' || json_extract(data, '$.number'), ?,
               CASE WHEN json_extract(data, '$.direction') = 'payable' THEN -amount ELSE amount END,
               CASE WHEN json_extract(data, '$.direction') = 'payable' THEN category ELSE 'Client work' END,
-              'completed', json_object('counterparty', json_extract(data, '$.client'), 'invoiceId', id, 'method', 'Bank transfer'), ?, ?
+              'completed', json_object('counterparty', json_extract(data, '$.client'), 'invoiceId', id, 'method', 'Bank transfer', 'profileId', json_extract(data, '$.profileId')), ?, ?
             FROM entries WHERE id = ? AND company_id = ? AND kind = 'invoice' AND status IN ('sent', 'overdue', 'paid')
             ON CONFLICT(id) DO NOTHING`,
           ).bind(now.slice(0, 10), now, now, id, companyId),
@@ -580,11 +642,14 @@ export async function handleApi(request: Request): Promise<Response> {
           ]);
           return json({ ok: true });
         }
-        const updated = await db
+        const profile = await prepareProfile(db, companyId!, input);
+        const update = db
           .update(entries)
           .set({ ...input, updatedAt: new Date().toISOString() })
-          .where(editableRecordScope)
-          .run();
+          .where(editableRecordScope);
+        const updated = profile
+          ? (await db.batch([update, profile.statement]))[0]
+          : await update.run();
         if (!updated.meta.changes)
           fail(
             409,
